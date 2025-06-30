@@ -78,17 +78,26 @@ async function run() {
 
 
         // get all parcel in database
-        app.get('/parcels', async (req, res) => {
-            const data = req.body;
-            const result = await allParcelsCollection.find(data).toArray();
-            res.send(result)
-        })
+        // app.get('/parcels', async (req, res) => {
+        //     const data = req.body;
+        //     const result = await allParcelsCollection.find(data).toArray();
+        //     res.send(result)
+        // })
 
         // particular user get his api 
         app.get('/parcels', verifyFBToken, async (req, res) => {
-            const email = req.query.email;
             try {
-                const query = email ? { created_by: email } : {};
+                const { email, payment_status, delivery_status } = req.query;
+                let query = {}
+                if (email) {
+                    query = { created_by: email }
+                }
+                if (delivery_status) {
+                    query.delivery_status = delivery_status
+                }
+                if (payment_status) {
+                    query.payment_status = payment_status
+                }
                 const options = { sort: { createdAt: -1 } }
                 const parcels = await allParcelsCollection.find(query, options).toArray();
                 res.json(parcels);
@@ -118,6 +127,16 @@ async function run() {
                 console.error('Error fetching parcel:', error);
                 res.status(500).send({ message: 'Failed to fetch params ' })
             }
+        })
+
+        // parcel assign update 
+        app.get('/parcels/assign/:parcelId', async (req, res) => {
+            const parcelId = req.params.parcelId;
+            const riderEmail = req.body;
+            const id = { _id: new ObjectId(parcelId) };
+            const updateDoc = { $set: { assignedRider: riderEmail } };
+            const result = await allParcelsCollection.updateOne(id, updateDoc);
+            res.send(result)
         })
 
         // users search 
@@ -205,7 +224,7 @@ async function run() {
         });
 
         // payments get 
-        app.get('/payments', verifyFBToken, async (req, res) => {
+        app.get('/payments', verifyFBToken, verifyAdmin, async (req, res) => {
             const userEmail = req.query.email;
 
             // console.log(req.headers.authorization);
@@ -257,6 +276,17 @@ async function run() {
             const result = await paymentCollection.deleteOne(data);
             res.send(result)
         })
+
+        // 🔹 Find riders on region 
+        app.get('/riders', async (req, res) => {
+            const region = req.query.region;
+            try {
+                const result = await ridersCollection.find({ region: region }).toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ error: 'Failed to fetch riders.' });
+            }
+        });
 
         // riders pending 
         app.get('/riders/pending', verifyFBToken, verifyAdmin, async (req, res) => {
@@ -312,6 +342,20 @@ async function run() {
             const result = await ridersCollection.insertOne(data);
             res.send(result)
         })
+
+        // rider assign status 
+        app.patch('/riders/asignStatus/:id', async (req, res) => {
+            const id = req.params.id;
+            try {
+                const result = await ridersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { work_status: 'busy' } }
+                );
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ error: 'Failed to update rider status.' });
+            }
+        });
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
