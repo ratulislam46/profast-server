@@ -16,7 +16,8 @@ app.use(express.json());
 
 
 // token verify from firebase 
-const serviceAccount = require('./firebase_admin_key.json');
+const decodedKey = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decodedKey)
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -36,7 +37,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
 
         const allParcelsCollection = client.db('profast').collection('parcels');
         const paymentCollection = client.db('profast').collection('payments');
@@ -82,7 +83,6 @@ async function run() {
             }
             next()
         }
-
 
 
         // particular user get his api 
@@ -185,7 +185,6 @@ async function run() {
         });
 
         // pending delivery_status update in parcels 
-
         app.patch("/parcels/:id/status", async (req, res) => {
             const parcelId = req.params.id;
             const { status } = req.body;
@@ -611,10 +610,9 @@ async function run() {
 
 
 
-
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     }
     finally {
 
